@@ -16,19 +16,19 @@ router.get('/', async (req, res, next) => {
         console.error(error);
         next(error);
     }
-});
+    });
 
-router.get('/room', (req, res) => {
+    router.get('/room', (req, res) => {
     res.render('room', { title: 'GIF 채팅방 생성' });
 });
 
 router.post('/room', async (req, res, next) => {
     try {
         const room = new Room({
-        title: req.body.title,
-        max: req.body.max,
-        owner: req.session.color,
-        password: req.body.password,
+            title: req.body.title,
+            max: req.body.max,
+            owner: req.session.color,
+            password: req.body.password,
         });
         const newRoom = await room.save();
         const io = req.app.get('io');
@@ -77,7 +77,7 @@ router.delete('/room/:id', async (req, res, next) => {
         await Chat.remove({ room: req.params.id });
         res.send('ok');
         setTimeout(() => {
-        req.app.get('io').of('/room').emit('removeRoom', req.params.id);
+            req.app.get('io').of('/room').emit('removeRoom', req.params.id);
         }, 2000);
     } catch (error) {
         console.error(error);
@@ -93,6 +93,7 @@ router.post('/room/:id/chat', async (req, res, next) => {
             chat: req.body.chat,
         });
         await chat.save();
+        // req.app.get('io').of('/chat').to(req.params.id).emit('chat', chat);
         req.app.get('io').of('/chat').to(req.params.id).emit('chat',{
             socket: req.body.sid,
             room: req.params.id,
@@ -115,11 +116,11 @@ fs.readdir('uploads', (error) => {
 const upload = multer({
     storage: multer.diskStorage({
         destination(req, file, cb) {
-        cb(null, 'uploads/');
+            cb(null, 'uploads/');
         },
         filename(req, file, cb) {
-        const ext = path.extname(file.originalname);
-        cb(null, path.basename(file.originalname, ext) + new Date().valueOf() + ext);
+            const ext = path.extname(file.originalname);
+            cb(null, path.basename(file.originalname, ext) + new Date().valueOf() + ext);
         },
     }),
     limits: { fileSize: 5 * 1024 * 1024 },
@@ -132,6 +133,7 @@ router.post('/room/:id/gif', upload.single('gif'), async (req, res, next) => {
             gif: req.file.filename,
         });
         await chat.save();
+        // req.app.get('io').of('/chat').to(req.params.id).emit('chat', chat);
         req.app.get('io').of('/chat').to(req.params.id).emit('chat',{
             socket: req.body.sid,
             room: req.params.id,
@@ -146,9 +148,12 @@ router.post('/room/:id/gif', upload.single('gif'), async (req, res, next) => {
 });
 router.post('/room/:id/sys', async(req, res, next) => {
     try {
-        const chat = req.body.type === 'join'
+        let chat = req.body.type === 'join'
         ? `${req.session.color} 님이 입장하셨습니다.`
         : `${req.session.color} 님이 퇴장하셨습니다.`;
+        if (req.body.type === 'change') {
+            chat = req.body.chat;
+        }
         const sys = new Chat({
             room: req.params.id,
             user: 'system',
@@ -158,13 +163,24 @@ router.post('/room/:id/sys', async(req, res, next) => {
         req.app.get('io').of('/chat').to(req.params.id).emit(req.body.type, {
             user: 'system',
             chat,
-            number: req.app.get('io').of('/chat').apdapter.rooms[req.params.id].length,
+            number: req.body.number,
         });
         res.send('ok');
     } catch (error) {
-        console.log('------------------------------------');
+        console.log('--------------------error----------------');
         console.log(error);
-        console.log('------------------------------------');
+        next(error);
+    }
+});
+
+// 방장 위임
+router.post('/room/:id/owner', async(req, res, next) => {
+    try {
+        await Room.update({ _id: req.params.id}, {$set: req.body});
+        res.send('ok');
+    } catch (error) {
+        console.log('--------------------error----------------');
+        console.log(error);
         next(error);
     }
 });
