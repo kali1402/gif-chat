@@ -67,6 +67,8 @@ block content
             div.textContent = data.chat;
             div.appendChild(chat);
             document.querySelector('#chat-list').appendChild(div);
+            var roomid = document.getElementById('room-id').value;
+            location.href=`/room/${roomid}`;
         });
         socket.on('chat', function (data) {
 
