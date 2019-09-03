@@ -12,6 +12,6 @@ html
                 transports: ['websocket']
             });
             socket.on('news', function (data) {
-                console.log(data);
+                console.log('index.pug : data :', data);
                 socket.emit('reply', 'Hello Node.JS');
             });

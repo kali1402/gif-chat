@@ -7,21 +7,25 @@ block content
         table
             thead
                 tr
-                    th 방 제목
-                    th 종류
-                    th 허용 인원
-                    th 방장
-                    th 입장
-            for room in rooms
-                tr(data-id=room._id)
-                    td= room.title
-                    td= room.password ? '비밀방' : '공개방'
-                    td= room.max
-                    td(style='color:' + room.owner)= room.owner
-                    -var password = room.password ? 'true' : 'false';
-                    td: button(data-password=password data-id=room._id).join-btn 입장
+                th 방 제목
+                th 종류
+                th 허용 인원
+                th 방장
+            tbody
+                for room in rooms
+                    tr(data-id=room._id)
+                        td= room.title
+                        td= room.password ? '비밀방' : '공개방'
+                        td= room.max
+                        td(style='color:' + room.owner)= room.owner
+                        -var password = room.password ? 'true' : 'false';
+                        td: button(data-password=password data-id=room._id).join-btn 입장
     .error-message= error
-    a(href='/room') 채팅방 생성
+    a(style=`
+        text-decoration: none;
+        font-size: 25px;
+        padding:10px;
+    ` href='/room') 채팅방 생성
     script(src='/socket.io/socket.io.js')
     script.
         var socket = io.connect('http://localhost:8005/room', {

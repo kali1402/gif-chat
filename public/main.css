@@ -70,6 +70,9 @@ table, table th, table td {
 
 button {
     background-color: silver;
+    border-radius: 15px;
     outline: none;
-    padding: 5px;
+    padding: 7px;
+    font-size: 12px;
+    margin: 5px;
 }

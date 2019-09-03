@@ -3,27 +3,33 @@ extends layout
 block content
     h1= title
     a#exit-btn(href='/') 방 나가기
+    #number
+        | 참여자 수 : 
+        #number-count= number
+    #owner
+        | 방장 :
+        span#room-owner(style='color:' + room.owner)= room.owner
     fieldset
         legend 채팅 내용
         #chat-list
-        for chat in chats
-            if chat.user === user
-                .mine(style='color:' + chat.user)
-                div= chat.user
-                if chat.gif
-                    img(src='/gif/' + chat.gif)
-                else
+            for chat in chats
+                if chat.user === user
+                    .mine(style='color:' + chat.user)
+                    div= chat.user
+                    if chat.gif
+                        img(src='/gif/' + chat.gif)
+                    else
+                        div= chat.chat
+                else if chat.user === 'system'
+                    .system
                     div= chat.chat
-            else if chat.user === 'system'
-                .system
-                div= chat.chat
-            else
-                .other(style='color:' + chat.user)
-                div= chat.user
-                if chat.gif
-                    img(src='/gif/' + chat.gif)
                 else
-                    div= chat.chat
+                    .other(style='color:' + chat.user)
+                    div= chat.user
+                    if chat.gif
+                        img(src='/gif/' + chat.gif)
+                    else
+                        div= chat.chat
     form#chat-form(action='/chat' method='post' enctype='multipart/form-data')
         label(for='gif') GIF 올리기
         input#gif(type='file' name='gif' accept='image/gif')
@@ -35,17 +41,19 @@ block content
             path: '/socket.io'
         });
         socket.on('join', function (data) {
-        var div = document.createElement('div');
+            document.querySelector('#number-count').textContent = data.number;
+            var div = document.createElement('div');
             div.classList.add('system');
-        var chat = document.createElement('div');
+            var chat = document.createElement('div');
             div.textContent = data.chat;
             div.appendChild(chat);
             document.querySelector('#chat-list').appendChild(div);
         });
         socket.on('exit', function (data) {
-        var div = document.createElement('div');
+            document.querySelector('#number-count').textContent = data.number;
+            var div = document.createElement('div');
             div.classList.add('system');
-        var chat = document.createElement('div');
+            var chat = document.createElement('div');
             div.textContent = data.chat;
             div.appendChild(chat);
             document.querySelector('#chat-list').appendChild(div);
@@ -53,12 +61,30 @@ block content
         socket.on('chat', function (data) {
             var div = document.createElement('div');
             if (data.user === '#{user}') {
+                
                 div.classList.add('mine');
             } else {
                 div.classList.add('other');
             }
             var name = document.createElement('div');
             name.textContent = data.user;
+            name.className = 'chat-user';
+            if (data.user !== '#{user}') {
+                var dm = document.createElement('button')
+                dm.textContent='귓속말';
+                dm.className = 'dm';
+                dm.dataset.socket = data.socket;
+                dm.addEventListener('click',sendDM);
+                name.appendChild(dm);
+            }
+            if (data.user !== '#{user}') {
+                var ban_b = document.createElement('button');
+                ban_b.className = 'ban';
+                ban_b.textContent= '강퇴';
+                ban_b.dataset.socket = data.socket;
+                ban_b.addEventListener('click', ban);
+                name.appendChild(ban_b);
+            }
             div.appendChild(name);
             if (data.chat) {
                 var chat = document.createElement('div');
@@ -85,7 +111,7 @@ block content
                 };
                 xhr.open('POST', '/room/#{room._id}/chat');
                 xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify({ chat: this.chat.value }));
+                xhr.send(JSON.stringify({ chat: this.chat.value, sid:socket.id }));
             }
         });
         document.querySelector('#gif').addEventListener('change', function (e) {
@@ -95,11 +121,40 @@ block content
             formData.append('gif', e.target.files[0]);
             xhr.onload = function () {
                 if (xhr.status === 200) {
-                e.target.file = null;
+                    e.target.file = null;
                 } else {
-                console.error(xhr.responseText);
+                    console.error(xhr.responseText);
                 }
             };
             xhr.open('POST', '/room/#{room._id}/gif');
             xhr.send(formData);
+        });
+        var sendDM = function(e) {
+            var id = e.target.dataset.socket;
+            var prompt = window.prompt('귓속말을 입력해주세요.');
+            socket.emit('dm', {target:id, msg: prompt, from: '#{user}'})
+        };
+        Array.prototype.forEach.call(document.querySelectorAll('.dm'), function(){
+            addEventListener('click', sendDM);
+        })
+        socket.on('dm', function(data) {
+            alert(data.from + '님에게서 귓속말이 도착했습니다 : ' + data.msg);
+        });
+        function ban(e) {
+            var id = e.target.dataset.socket;
+            var name = e.target.textContent;
+            var owner = document.getElementById('room-owner').textContent;
+            console.log('#{user}', owner);
+            if ('#{user}' === owner && name !== owner) {
+                if (confirm(`상대방을 강퇴하시겠습니까??`)) {
+                    socket.emit('ban', {id});
+                }
+            }
+        }
+        Array.prototype.forEach.call(document.querySelectorAll('.chat-user'), function(){
+            addEventListener('click', ban);
+        });
+        socket.on('ban', function() {
+            alert('방장이 당신을 강제퇴장 시켰습니다.');
+            location.href = '/';
         });
